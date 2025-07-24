@@ -9,7 +9,6 @@ function toCamelCase(name) {
   return camelCase(name);
 }
 
-console.log('snake-to-camel.js');
 module.exports = function(fileInfo, api) {
   const j = api.jscodeshift;
   const root = j(fileInfo.source);

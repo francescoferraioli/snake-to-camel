@@ -8,8 +8,6 @@ fi
 targetPath="$1"
 codemodPath="$(dirname "$0")/codemods/snake-to-camel.js"
 
-echo "$targetPath"
-
 npx jscodeshift \
   -t "$codemodPath" \
   "$targetPath" \
