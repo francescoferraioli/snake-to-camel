@@ -110,6 +110,11 @@ project.getSourceFiles().forEach((sourceFile) => {
     }
 
     const name = node.getText();
+
+    if (!isSnakeCase(name)) {
+      return;
+    }
+
     const parent = node.getParent();
 
     // Only rename if this is a variable declaration (including destructuring)
@@ -118,7 +123,7 @@ project.getSourceFiles().forEach((sourceFile) => {
       // Check that this is actually the declaration, not a reference
       && parent.getNameNode() === node;
 
-    if (!isDeclaration || !isSnakeCase(name)) {
+    if (!isDeclaration) {
       return;
     }
 
