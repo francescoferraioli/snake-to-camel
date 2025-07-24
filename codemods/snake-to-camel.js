@@ -41,8 +41,13 @@ const files = targetPath.endsWith(".ts") || targetPath.endsWith(".tsx")
   ? [targetPath]
   : getAllFiles(targetPath, [".ts", ".tsx"]);
 
+// Add all files to the project first
 files.forEach((filePath) => {
-  const sourceFile = project.addSourceFileAtPath(filePath);
+  project.addSourceFileAtPath(filePath);
+});
+
+// Then process all source files for renaming
+project.getSourceFiles().forEach((sourceFile) => {
   let changed = false;
 
   sourceFile.forEachDescendant((node) => {
@@ -65,6 +70,6 @@ files.forEach((filePath) => {
 
   if (changed) {
     sourceFile.saveSync();
-    console.log(`Updated: ${filePath}`);
+    console.log(`Updated: ${sourceFile.getFilePath()}`);
   }
 });
