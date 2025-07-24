@@ -13,7 +13,7 @@ This repository provides a [jscodeshift](https://github.com/facebook/jscodeshift
 You can use the provided script to run the codemod by simply passing a folder path:
 
 ```sh
-node run-snake-to-camel.js <folder>
+yarn convert <folder>
 ```
 
 - Replace `<folder>` with your TypeScript source directory (e.g., `src`).
