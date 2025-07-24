@@ -1,0 +1,10 @@
+{
+  "name": "snake-to-camel-ts",
+  "version": "1.0.0",
+  "main": "index.js",
+  "license": "MIT",
+  "devDependencies": {
+    "jscodeshift": "^17.3.0",
+    "lodash": "^4.17.21"
+  }
+}
