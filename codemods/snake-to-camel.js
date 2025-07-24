@@ -37,7 +37,9 @@ function getAllFiles(dir, exts, fileList = []) {
   return fileList;
 }
 
-const files = getAllFiles(targetPath, [".ts", ".tsx"]);
+const files = targetPath.endsWith(".ts") || targetPath.endsWith(".tsx")
+  ? [targetPath]
+  : getAllFiles(targetPath, [".ts", ".tsx"]);
 
 files.forEach((filePath) => {
   const sourceFile = project.addSourceFileAtPath(filePath);
