@@ -46,22 +46,36 @@ files.forEach((filePath) => {
   project.addSourceFileAtPath(filePath);
 });
 
-// Check if a name would be shadowed in any ancestor scope
+// Helper to get all direct declared name nodes in a scope
+function getDirectDeclaredNameNodes(scope) {
+  if (Node.isBlock(scope) || Node.isSourceFile(scope)) {
+    // Collect all direct variable, function, class, interface, type, and enum name nodes in this scope
+    return scope.getStatements()
+      .flatMap(stmt => {
+        // Collect variable declaration names (e.g., let foo = 1;)
+        if (stmt.getVariableDeclarations) return stmt.getVariableDeclarations().map(decl => decl.getNameNode());
+        // Collect names of functions, classes, interfaces, types, enums, etc. (e.g., function foo() {}, class Bar {})
+        if (stmt.getNameNode) return [stmt.getNameNode()];
+        return [];
+      });
+  } else if (
+    Node.isFunctionDeclaration(scope) ||
+    Node.isFunctionExpression(scope) ||
+    Node.isArrowFunction(scope)
+  ) {
+    // Parameters of the function
+    return scope.getParameters()
+      .map(param => param.getNameNode());
+  }
+  return [];
+}
+
+// Check if a name would be shadowed in any ancestor scope (only direct declarations in each scope)
 function wouldShadowInAncestors(node, newName) {
   let current = node.getParent();
   while (current) {
-    if (
-      Node.isBlock(current) ||
-      Node.isSourceFile(current) ||
-      Node.isFunctionDeclaration(current) ||
-      Node.isArrowFunction(current) ||
-      Node.isFunctionExpression(current)
-    ) {
-      // Check for any identifier with the newName in this scope
-      const hasConflict = current.getDescendantsOfKind(SyntaxKind.Identifier)
-        .some((id) => id.getText() === newName && id !== node);
-      if (hasConflict) return true;
-    }
+    const nameNodes = getDirectDeclaredNameNodes(current);
+    if (nameNodes.some(n => n && n.getText() === newName && n !== node)) return true;
     current = current.getParent();
   }
   return false;
