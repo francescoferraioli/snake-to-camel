@@ -91,25 +91,34 @@ project.getSourceFiles().forEach((sourceFile) => {
   let changed = false;
 
   sourceFile.forEachDescendant((node) => {
-    if (node.getKind() === SyntaxKind.Identifier) {
-      const name = node.getText();
-      const parent = node.getParent();
-      // Only rename if this is a variable declaration (including destructuring)
-      const isDeclaration =
-        (Node.isVariableDeclaration(parent) && parent.getNameNode() === node) ||
-        (Node.isBindingElement(parent) && parent.getNameNode() === node && Node.isVariableDeclaration(parent.getParentOrThrow()));
-      if (isDeclaration && isSnakeCase(name)) {
-        const camel = toCamelCase(name);
-        if (camel !== name) {
-          // Check all ancestor scopes for shadowing
-          if (!wouldShadowInAncestors(node, camel)) {
-            node.rename(camel); // This will update all references
-            changed = true;
-          }
-          // If shadowed, skip silently
-        }
-      }
+    if (node.getKind() !== SyntaxKind.Identifier) {
+      return;
     }
+
+    const name = node.getText();
+    const parent = node.getParent();
+    
+    // Only rename if this is a variable declaration (including destructuring)
+    const isDeclaration =
+      (Node.isVariableDeclaration(parent) && parent.getNameNode() === node) ||
+      (Node.isBindingElement(parent) && parent.getNameNode() === node && Node.isVariableDeclaration(parent.getParentOrThrow()));
+
+    if (!isDeclaration || !isSnakeCase(name)) {
+      return;
+    }
+
+    const camel = toCamelCase(name);
+    if (camel === name) {
+      return;
+    }
+
+    // Check all ancestor scopes for shadowing
+    if (wouldShadowInAncestors(node, camel)) {
+      return; // If shadowed, skip silently
+    }
+
+    node.rename(camel); // This will update all references
+    changed = true;
   });
 
   if (changed) {
