@@ -49,7 +49,7 @@ files.forEach((filePath) => {
 // Helper to get all direct declared name nodes in a scope
 function getDirectDeclaredNameNodes(scope) {
   if (Node.isBlock(scope) || Node.isSourceFile(scope)) {
-    // Collect all direct variable, function, class, interface, type, and enum name nodes in this scope
+    // Collect all direct variable, function, class, interface, type, enum name nodes in this scope
     return scope.getStatements()
       .flatMap(stmt => {
         // Collect variable declaration names (e.g., let foo = 1;)
@@ -58,6 +58,12 @@ function getDirectDeclaredNameNodes(scope) {
         if (stmt.getNameNode) return [stmt.getNameNode()];
         return [];
       });
+  } else if (Node.isClassDeclaration(scope)) {
+    // Collect all static property and static method name nodes in this class
+    return [
+      ...scope.getStaticProperties().map(prop => prop.getNameNode()),
+      ...scope.getStaticMethods().map(method => method.getNameNode())
+    ];
   } else if (
     Node.isFunctionDeclaration(scope) ||
     Node.isFunctionExpression(scope) ||
