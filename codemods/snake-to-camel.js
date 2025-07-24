@@ -4,6 +4,7 @@ const path = require("path");
 const fs = require("fs");
 
 function isSnakeCase(name) {
+  if (!name.includes('_')) return false;
   // Check for snake_case pattern: all lowercase with underscores
   return /^[a-z]+(_[a-z0-9]+)*$/.test(name);
 }
