@@ -30,3 +30,5 @@ module.exports = function(fileInfo, api) {
 
   return root.toSource();
 };
+
+module.exports.parser = 'tsx';
