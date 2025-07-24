@@ -1,4 +1,7 @@
-const { camelCase } = require('lodash');
+const { Project } = require("ts-morph");
+const { camelCase } = require("lodash");
+const path = require("path");
+const fs = require("fs");
 
 function isSnakeCase(name) {
   // Check for snake_case pattern: all lowercase with underscores
@@ -9,24 +12,52 @@ function toCamelCase(name) {
   return camelCase(name);
 }
 
-module.exports = function(fileInfo, api) {
-  const j = api.jscodeshift;
-  const root = j(fileInfo.source);
+const targetPath = process.argv[2];
+const tsconfigPath = process.argv[3] || path.join(process.cwd(), "tsconfig.json");
+if (!targetPath) {
+  console.error("Usage: node snake-to-camel.js <folder> [tsconfig.json path]");
+  process.exit(1);
+}
 
-  // Rename variable declarations
-  root.find(j.Identifier)
-    .forEach(path => {
-      const { name } = path.node;
+const project = new Project({
+  tsConfigFilePath: tsconfigPath,
+  skipAddingFilesFromTsConfig: true,
+});
+
+function getAllFiles(dir, exts, fileList = []) {
+  const files = fs.readdirSync(dir);
+  files.forEach((file) => {
+    const filePath = path.join(dir, file);
+    if (fs.statSync(filePath).isDirectory()) {
+      getAllFiles(filePath, exts, fileList);
+    } else if (exts.some((ext) => file.endsWith(ext))) {
+      fileList.push(filePath);
+    }
+  });
+  return fileList;
+}
+
+const files = getAllFiles(targetPath, [".ts", ".tsx"]);
+
+files.forEach((filePath) => {
+  const sourceFile = project.addSourceFileAtPath(filePath);
+  let changed = false;
+
+  sourceFile.forEachDescendant((node) => {
+    if (node.getKindName() === "Identifier") {
+      const name = node.getText();
       if (isSnakeCase(name)) {
         const camel = toCamelCase(name);
-        // Only rename if not already camelCase
         if (camel !== name) {
-          path.node.name = camel;
+          node.replaceWithText(camel);
+          changed = true;
         }
       }
-    });
+    }
+  });
 
-  return root.toSource();
-};
-
-module.exports.parser = 'tsx';
+  if (changed) {
+    sourceFile.saveSync();
+    console.log(`Updated: ${filePath}`);
+  }
+});

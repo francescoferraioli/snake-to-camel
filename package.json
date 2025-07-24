@@ -7,7 +7,7 @@
     "convert": "sh run-snake-to-camel.sh"
   },
   "devDependencies": {
-    "jscodeshift": "^17.3.0",
-    "lodash": "^4.17.21"
+    "lodash": "^4.17.21",
+    "ts-morph": "^26.0.0"
   }
 }
