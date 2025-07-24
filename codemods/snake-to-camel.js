@@ -1,4 +1,4 @@
-const { Project } = require("ts-morph");
+const { Project, SyntaxKind, Node } = require("ts-morph");
 const { camelCase } = require("lodash");
 const path = require("path");
 const fs = require("fs");
@@ -44,9 +44,44 @@ files.forEach((filePath) => {
   let changed = false;
 
   sourceFile.forEachDescendant((node) => {
-    if (node.getKindName() === "Identifier") {
+    if (node.getKind() === SyntaxKind.Identifier) {
       const name = node.getText();
-      if (isSnakeCase(name)) {
+      const parent = node.getParent();
+      // Only rename if this is a variable declaration or reference, not a property, field, or parameter
+      let isVariable = false;
+      if (
+        // Variable declaration: let snake_case = ...;
+        (Node.isVariableDeclaration(parent) && parent.getNameNode() === node) ||
+        // Destructuring: const { snake_case } = ...;
+        (Node.isBindingElement(parent) && parent.getNameNode() === node && Node.isVariableDeclaration(parent.getParentOrThrow()))
+      ) {
+        isVariable = true;
+      } else {
+        // Variable reference: check if symbol points to a variable declaration
+        const symbol = node.getSymbol();
+        if (symbol) {
+          const decls = symbol.getDeclarations();
+          if (
+            decls.length > 0 &&
+            decls.every(
+              (decl) =>
+                Node.isVariableDeclaration(decl) ||
+                Node.isBindingElement(decl)
+            )
+          ) {
+            // Exclude property/field/parameter
+            if (
+              !Node.isPropertyAssignment(parent) &&
+              !Node.isPropertyDeclaration(parent) &&
+              !Node.isPropertySignature(parent) &&
+              !Node.isParameterDeclaration(parent)
+            ) {
+              isVariable = true;
+            }
+          }
+        }
+      }
+      if (isVariable && isSnakeCase(name)) {
         const camel = toCamelCase(name);
         if (camel !== name) {
           node.replaceWithText(camel);
