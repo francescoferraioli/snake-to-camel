@@ -87,6 +87,19 @@ function wouldShadowInAncestors(node, newName) {
   return false;
 }
 
+function isNormalVariableDeclaration(node) {
+  return Node.isVariableDeclaration(node);
+}
+
+function isDestructuringVariableDeclaration(node) {
+  if (!Node.isBindingElement(node)) return false;
+  const parent = node.getParentOrThrow();
+  if (!Node.isObjectBindingPattern(parent)) return false;
+  const grandParent = parent.getParentOrThrow();
+  if (!Node.isVariableDeclaration(grandParent)) return false;
+  return true;
+}
+
 project.getSourceFiles().forEach((sourceFile) => {
   let changed = false;
 
@@ -97,11 +110,12 @@ project.getSourceFiles().forEach((sourceFile) => {
 
     const name = node.getText();
     const parent = node.getParent();
-    
+
     // Only rename if this is a variable declaration (including destructuring)
     const isDeclaration =
-      (Node.isVariableDeclaration(parent) && parent.getNameNode() === node) ||
-      (Node.isBindingElement(parent) && parent.getNameNode() === node && Node.isVariableDeclaration(parent.getParentOrThrow()));
+      (isNormalVariableDeclaration(parent) || isDestructuringVariableDeclaration(parent))
+      // Check that this is actually the declaration, not a reference
+      && parent.getNameNode() === node;
 
     if (!isDeclaration || !isSnakeCase(name)) {
       return;
@@ -109,11 +123,14 @@ project.getSourceFiles().forEach((sourceFile) => {
 
     const camel = toCamelCase(name);
     if (camel === name) {
+      // This should never happen, but just in case
+      console.warn(`Skipping ${name} because it is already camelCase`);
       return;
     }
 
     // Check all ancestor scopes for shadowing
     if (wouldShadowInAncestors(node, camel)) {
+      console.warn(`Skipping ${name} because it would shadow ${camel}`);
       return; // If shadowed, skip silently
     }
 
