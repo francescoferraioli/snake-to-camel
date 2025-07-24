@@ -49,50 +49,15 @@ files.forEach((filePath) => {
     if (node.getKind() === SyntaxKind.Identifier) {
       const name = node.getText();
       const parent = node.getParent();
-      // Only rename if this is a variable declaration or reference, not a property, field, or parameter
-      let isVariable = false;
-      let isDeclaration = false;
-      if (
-        // Variable declaration: let snake_case = ...;
+      // Only rename if this is a variable declaration (including destructuring)
+      const isDeclaration =
         (Node.isVariableDeclaration(parent) && parent.getNameNode() === node) ||
-        // Destructuring: const { snake_case } = ...;
-        (Node.isBindingElement(parent) && parent.getNameNode() === node && Node.isVariableDeclaration(parent.getParentOrThrow()))
-      ) {
-        isVariable = true;
-        isDeclaration = true;
-      } else {
-        // Variable reference: check if symbol points to a variable declaration
-        const symbol = node.getSymbol();
-        if (symbol) {
-          const decls = symbol.getDeclarations();
-          if (
-            decls.length > 0 &&
-            decls.every(
-              (decl) =>
-                Node.isVariableDeclaration(decl) ||
-                Node.isBindingElement(decl)
-            )
-          ) {
-            // Exclude property/field/parameter
-            if (
-              !Node.isPropertyAssignment(parent) &&
-              !Node.isPropertyDeclaration(parent) &&
-              !Node.isPropertySignature(parent) &&
-              !Node.isParameterDeclaration(parent)
-            ) {
-              isVariable = true;
-            }
-          }
-        }
-      }
-      if (isVariable && isSnakeCase(name)) {
+        (Node.isBindingElement(parent) && parent.getNameNode() === node && Node.isVariableDeclaration(parent.getParentOrThrow()));
+      if (isDeclaration && isSnakeCase(name)) {
         const camel = toCamelCase(name);
         if (camel !== name) {
-          if (isDeclaration) {
-            node.rename(camel); // This will update all references
-            changed = true;
-          }
-          // Do not rename references directly; handled by declaration rename
+          node.rename(camel); // This will update all references
+          changed = true;
         }
       }
     }
