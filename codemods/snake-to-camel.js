@@ -46,7 +46,27 @@ files.forEach((filePath) => {
   project.addSourceFileAtPath(filePath);
 });
 
-// Then process all source files for renaming
+// Check if a name would be shadowed in any ancestor scope
+function wouldShadowInAncestors(node, newName) {
+  let current = node.getParent();
+  while (current) {
+    if (
+      Node.isBlock(current) ||
+      Node.isSourceFile(current) ||
+      Node.isFunctionDeclaration(current) ||
+      Node.isArrowFunction(current) ||
+      Node.isFunctionExpression(current)
+    ) {
+      // Check for any identifier with the newName in this scope
+      const hasConflict = current.getDescendantsOfKind(SyntaxKind.Identifier)
+        .some((id) => id.getText() === newName && id !== node);
+      if (hasConflict) return true;
+    }
+    current = current.getParent();
+  }
+  return false;
+}
+
 project.getSourceFiles().forEach((sourceFile) => {
   let changed = false;
 
@@ -61,8 +81,12 @@ project.getSourceFiles().forEach((sourceFile) => {
       if (isDeclaration && isSnakeCase(name)) {
         const camel = toCamelCase(name);
         if (camel !== name) {
-          node.rename(camel); // This will update all references
-          changed = true;
+          // Check all ancestor scopes for shadowing
+          if (!wouldShadowInAncestors(node, camel)) {
+            node.rename(camel); // This will update all references
+            changed = true;
+          }
+          // If shadowed, skip silently
         }
       }
     }
