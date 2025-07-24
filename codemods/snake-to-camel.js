@@ -51,6 +51,7 @@ files.forEach((filePath) => {
       const parent = node.getParent();
       // Only rename if this is a variable declaration or reference, not a property, field, or parameter
       let isVariable = false;
+      let isDeclaration = false;
       if (
         // Variable declaration: let snake_case = ...;
         (Node.isVariableDeclaration(parent) && parent.getNameNode() === node) ||
@@ -58,6 +59,7 @@ files.forEach((filePath) => {
         (Node.isBindingElement(parent) && parent.getNameNode() === node && Node.isVariableDeclaration(parent.getParentOrThrow()))
       ) {
         isVariable = true;
+        isDeclaration = true;
       } else {
         // Variable reference: check if symbol points to a variable declaration
         const symbol = node.getSymbol();
@@ -86,8 +88,11 @@ files.forEach((filePath) => {
       if (isVariable && isSnakeCase(name)) {
         const camel = toCamelCase(name);
         if (camel !== name) {
-          node.replaceWithText(camel);
-          changed = true;
+          if (isDeclaration) {
+            node.rename(camel); // This will update all references
+            changed = true;
+          }
+          // Do not rename references directly; handled by declaration rename
         }
       }
     }
