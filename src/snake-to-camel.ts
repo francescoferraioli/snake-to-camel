@@ -157,6 +157,16 @@ function isDestructuringVariableDeclaration(node: Node): boolean {
   if (!Node.isObjectBindingPattern(parent)) return false;
   const grandParent = parent.getParentOrThrow();
   if (!Node.isVariableDeclaration(grandParent)) return false;
+
+  // Check if this is shorthand destructuring (we don't have a property name)
+  const propertyName = node.getPropertyNameNode();
+  if (!propertyName) {
+    console.warn(
+      `Skipping ${node.getText()} because it is shorthand destructuring`
+    );
+    return false;
+  }
+
   return true;
 }
 
@@ -265,6 +275,9 @@ project.getSourceFiles().forEach((sourceFile) => {
           Node.isShorthandPropertyAssignment(parent) &&
           parent.getNameNode() === refNodeActual
         ) {
+          console.warn(
+            `Handling shorthand property assignment: ${snake} -> ${camel}`
+          );
           // Convert to explicit property assignment: { camelCase } -> { snake_case: camelCase }
           parent.replaceWithText(`${snake}: ${camel}`);
         }
