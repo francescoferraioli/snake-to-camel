@@ -9,6 +9,54 @@ import { camelCase } from 'lodash';
 import * as path from 'path';
 import * as fs from 'fs';
 
+type SkipReason =
+  | 'already camelCase'
+  | 'would shadow'
+  | 'would be shadowed'
+  | 'property in type or interface'
+  | 'shorthand destructuring';
+type Status = 'skip' | 'success';
+
+// Structured logging context builder
+class RenamingContext {
+  private context: {
+    timestamp: string;
+    filename: string;
+    identifier?: string;
+    status?: Status;
+    reason?: SkipReason;
+    shorthandHandled?: boolean;
+  };
+
+  constructor(filename: string) {
+    this.context = {
+      timestamp: new Date().toISOString(),
+      filename,
+    };
+  }
+
+  setIdentifier(identifier: string): RenamingContext {
+    this.context.identifier = identifier;
+    return this;
+  }
+
+  skip(reason: SkipReason): void {
+    this.context.status = 'skip';
+    this.context.reason = reason;
+    this.log();
+  }
+
+  success(shorthandHandled: boolean = false): void {
+    this.context.status = 'success';
+    this.context.shorthandHandled = shorthandHandled;
+    this.log();
+  }
+
+  private log(): void {
+    console.log(JSON.stringify(this.context));
+  }
+}
+
 function isSnakeCase(name: string): boolean {
   if (!name.includes('_')) return false;
   // Check for snake_case pattern: all lowercase with underscores
@@ -151,23 +199,27 @@ function isNormalVariableDeclaration(node: Node): boolean {
   return Node.isVariableDeclaration(node);
 }
 
-function isDestructuringVariableDeclaration(node: Node): boolean {
-  if (!Node.isBindingElement(node)) return false;
+type IsDestructuringVariableDeclarationResult =
+  | 'not destructuring'
+  | 'shorthand destructuring'
+  | 'explicit destructuring';
+
+function isDestructuringVariableDeclaration(
+  node: Node
+): IsDestructuringVariableDeclarationResult {
+  if (!Node.isBindingElement(node)) return 'not destructuring';
   const parent = node.getParentOrThrow();
-  if (!Node.isObjectBindingPattern(parent)) return false;
+  if (!Node.isObjectBindingPattern(parent)) return 'not destructuring';
   const grandParent = parent.getParentOrThrow();
-  if (!Node.isVariableDeclaration(grandParent)) return false;
+  if (!Node.isVariableDeclaration(grandParent)) return 'not destructuring';
 
   // Check if this is shorthand destructuring (we don't have a property name)
   const propertyName = node.getPropertyNameNode();
   if (!propertyName) {
-    console.warn(
-      `Skipping ${node.getText()} because it is shorthand destructuring`
-    );
-    return false;
+    return 'shorthand destructuring';
   }
 
-  return true;
+  return 'explicit destructuring';
 }
 
 // Helper to check if a node is a property in a type or interface
@@ -190,6 +242,7 @@ function isTypeOrInterfacePropertyReference(node: Node): boolean {
 
 project.getSourceFiles().forEach((sourceFile) => {
   let changed = false;
+  const context = new RenamingContext(sourceFile.getBaseName());
 
   sourceFile.forEachDescendant((node) => {
     if (node.getKind() !== SyntaxKind.Identifier) {
@@ -202,19 +255,30 @@ project.getSourceFiles().forEach((sourceFile) => {
       return;
     }
 
+    context.setIdentifier(snake);
+
     const parent = node.getParentOrThrow();
 
     if (!isNamedNodeStatement(parent)) {
       return;
     }
 
+    // Check that this is actually the declaration, not a reference
+    if (parent.getNameNode() !== node) {
+      return;
+    }
+
+    const destructuringResult = isDestructuringVariableDeclaration(parent);
+    if (destructuringResult === 'shorthand destructuring') {
+      context.skip('shorthand destructuring');
+      return;
+    }
+
     // Only rename if this is a variable declaration (including destructuring) or a function parameter
     const isDeclaration =
-      (isNormalVariableDeclaration(parent) ||
-        isDestructuringVariableDeclaration(parent) ||
-        Node.isParameterDeclaration(parent)) &&
-      // Check that this is actually the declaration, not a reference
-      parent.getNameNode() === node;
+      isNormalVariableDeclaration(parent) ||
+      destructuringResult === 'explicit destructuring' ||
+      Node.isParameterDeclaration(parent);
 
     if (!isDeclaration) {
       return;
@@ -223,21 +287,19 @@ project.getSourceFiles().forEach((sourceFile) => {
     const camel = toCamelCase(snake);
     if (camel === snake) {
       // This should never happen, but just in case
-      console.warn(`Skipping ${snake} because it is already camelCase`);
+      context.skip('already camelCase');
       return;
     }
 
     // Check all ancestor scopes for shadowing
     if (wouldShadowInAncestors(node, camel)) {
-      console.warn(`Skipping ${snake} because it would shadow ${camel}`);
+      context.skip(`would shadow`);
       return; // If shadowed, skip silently
     }
 
     // Check all descendant scopes for shadowing
     if (wouldShadowInDescendants(node, camel)) {
-      console.warn(
-        `Skipping ${snake} because it would be shadowed by a descendant scope with ${camel}`
-      );
+      context.skip('would be shadowed');
       return;
     }
 
@@ -256,9 +318,7 @@ project.getSourceFiles().forEach((sourceFile) => {
       });
     });
     if (hasTypeOrInterfacePropertyRef) {
-      console.log(
-        `Skipping ${snake} because it is a property in a type or interface`
-      );
+      context.skip('property in type or interface');
       return; // Skip renaming if any reference is a property in a type or interface
     }
 
@@ -266,6 +326,7 @@ project.getSourceFiles().forEach((sourceFile) => {
     changed = true;
 
     // After renaming, update all object literal shorthand property assignments to explicit property assignments
+    let shorthandHandled = false;
     references.forEach((ref) => {
       ref.getReferences().forEach((refNode) => {
         const refNodeActual = refNode.getNode();
@@ -275,14 +336,14 @@ project.getSourceFiles().forEach((sourceFile) => {
           Node.isShorthandPropertyAssignment(parent) &&
           parent.getNameNode() === refNodeActual
         ) {
-          console.warn(
-            `Handling shorthand property assignment: ${snake} -> ${camel}`
-          );
+          shorthandHandled = true;
           // Convert to explicit property assignment: { camelCase } -> { snake_case: camelCase }
           parent.replaceWithText(`${snake}: ${camel}`);
         }
       });
     });
+
+    context.success(shorthandHandled);
   });
 
   if (changed) {
