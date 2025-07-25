@@ -1,10 +1,16 @@
-import { Project, SyntaxKind, Node, NamedNodeSpecificBase, Identifier } from "ts-morph";
+import {
+  Project,
+  SyntaxKind,
+  Node,
+  NamedNodeSpecificBase,
+  Identifier,
+} from "ts-morph";
 import { camelCase } from "lodash";
 import * as path from "path";
 import * as fs from "fs";
 
 function isSnakeCase(name: string): boolean {
-  if (!name.includes('_')) return false;
+  if (!name.includes("_")) return false;
   // Check for snake_case pattern: all lowercase with underscores
   return /^[a-z]+(_[a-z0-9]+)*$/.test(name);
 }
@@ -14,7 +20,8 @@ function toCamelCase(name: string): string {
 }
 
 const targetPath: string = process.argv[2];
-const tsconfigPath: string = process.argv[3] || path.join(process.cwd(), "tsconfig.json");
+const tsconfigPath: string =
+  process.argv[3] || path.join(process.cwd(), "tsconfig.json");
 if (!targetPath) {
   console.error("Usage: node snake-to-camel.js <folder> [tsconfig.json path]");
   process.exit(1);
@@ -25,7 +32,11 @@ const project: Project = new Project({
   skipAddingFilesFromTsConfig: true,
 });
 
-function getAllFiles(dir: string, exts: string[], fileList: string[] = []): string[] {
+function getAllFiles(
+  dir: string,
+  exts: string[],
+  fileList: string[] = [],
+): string[] {
   const files = fs.readdirSync(dir);
   files.forEach((file) => {
     const filePath = path.join(dir, file);
@@ -38,9 +49,10 @@ function getAllFiles(dir: string, exts: string[], fileList: string[] = []): stri
   return fileList;
 }
 
-const files: string[] = targetPath.endsWith(".ts") || targetPath.endsWith(".tsx")
-  ? [targetPath]
-  : getAllFiles(targetPath, [".ts", ".tsx"]);
+const files: string[] =
+  targetPath.endsWith(".ts") || targetPath.endsWith(".tsx")
+    ? [targetPath]
+    : getAllFiles(targetPath, [".ts", ".tsx"]);
 
 // Add all files to the project first
 files.forEach((filePath) => {
@@ -49,7 +61,7 @@ files.forEach((filePath) => {
 
 function getImportedNames(scope: Node): Node[] {
   if (!Node.isSourceFile(scope)) return [];
-  return scope.getImportDeclarations().flatMap(imp => {
+  return scope.getImportDeclarations().flatMap((imp) => {
     const nodes: Node[] = [];
     // Default import: import foo from '...';
     const defaultImport = imp.getDefaultImport();
@@ -58,9 +70,9 @@ function getImportedNames(scope: Node): Node[] {
     const namespaceImport = imp.getNamespaceImport();
     if (namespaceImport) nodes.push(namespaceImport);
     // Named imports: import { foo, bar as baz } from '...';
-    nodes.push(...imp.getNamedImports().map(spec => spec.getNameNode()));
+    nodes.push(...imp.getNamedImports().map((spec) => spec.getNameNode()));
     return nodes;
-  })
+  });
 }
 
 const cacheDirectDeclaredNameNodes = new Map<Node, Node[]>();
@@ -86,19 +98,19 @@ function _getDirectDeclaredNameNodes(scope: Node): Node[] {
     const importedNames = getImportedNames(scope);
     const statements = scope.getStatements();
     return [
-      ...variableDeclarations.map(decl => decl.getNameNode()),
+      ...variableDeclarations.map((decl) => decl.getNameNode()),
       ...importedNames,
-      ...statements.flatMap(stmt => {
+      ...statements.flatMap((stmt) => {
         // Collect names of functions, classes, interfaces, types, enums, etc. (e.g., function foo() {}, class Bar {})
         if (isNamedNodeStatement(stmt)) return [stmt.getNameNode()];
         return [];
-      })
+      }),
     ];
   } else if (Node.isClassDeclaration(scope)) {
     // Collect all static property and static method name nodes in this class
     return [
-      ...scope.getStaticProperties().map(prop => prop.getNameNode()),
-      ...scope.getStaticMethods().map(method => method.getNameNode())
+      ...scope.getStaticProperties().map((prop) => prop.getNameNode()),
+      ...scope.getStaticMethods().map((method) => method.getNameNode()),
     ];
   } else if (
     Node.isFunctionDeclaration(scope) ||
@@ -106,8 +118,7 @@ function _getDirectDeclaredNameNodes(scope: Node): Node[] {
     Node.isArrowFunction(scope)
   ) {
     // Parameters of the function
-    return scope.getParameters()
-      .map(param => param.getNameNode());
+    return scope.getParameters().map((param) => param.getNameNode());
   }
   return [];
 }
@@ -117,10 +128,14 @@ function wouldShadowInAncestors(node: Node, newName: string): boolean {
   let current = node.getParent();
   while (current) {
     const nameNodes = getDirectDeclaredNameNodes(current);
-    if (newName === 'bugReport') {
-      console.log(current.getKindName(), nameNodes.map(n => n.getText()));
+    if (newName === "bugReport") {
+      console.log(
+        current.getKindName(),
+        nameNodes.map((n) => n.getText()),
+      );
     }
-    if (nameNodes.some(n => n && n.getText() === newName && n !== node)) return true;
+    if (nameNodes.some((n) => n && n.getText() === newName && n !== node))
+      return true;
     current = current.getParent();
   }
   return false;
@@ -135,7 +150,7 @@ function wouldShadowInDescendants(node: Node, newName: string): boolean {
     scope.forEachChild((child) => {
       // Check direct declared names in this scope
       const nameNodes = getDirectDeclaredNameNodes(child);
-      if (nameNodes.some(n => n && n.getText() === newName)) {
+      if (nameNodes.some((n) => n && n.getText() === newName)) {
         shadowed = true;
       }
       // Recurse into this scope
@@ -181,9 +196,10 @@ project.getSourceFiles().forEach((sourceFile) => {
 
     // Only rename if this is a variable declaration (including destructuring)
     const isDeclaration =
-      (isNormalVariableDeclaration(parent) || isDestructuringVariableDeclaration(parent))
+      (isNormalVariableDeclaration(parent) ||
+        isDestructuringVariableDeclaration(parent)) &&
       // Check that this is actually the declaration, not a reference
-      && parent.getNameNode() === node;
+      parent.getNameNode() === node;
 
     if (!isDeclaration) {
       return;
@@ -204,7 +220,9 @@ project.getSourceFiles().forEach((sourceFile) => {
 
     // Check all descendant scopes for shadowing
     if (wouldShadowInDescendants(node, camel)) {
-      console.warn(`Skipping ${snake} because it would be shadowed by a descendant scope with ${camel}`);
+      console.warn(
+        `Skipping ${snake} because it would be shadowed by a descendant scope with ${camel}`,
+      );
       return;
     }
 
@@ -216,8 +234,8 @@ project.getSourceFiles().forEach((sourceFile) => {
     changed = true;
 
     // After renaming, update all object literal shorthand property assignments to explicit property assignments
-    references.forEach(ref => {
-      ref.getReferences().forEach(refNode => {
+    references.forEach((ref) => {
+      ref.getReferences().forEach((refNode) => {
         const refNodeActual = refNode.getNode();
         const parent = refNodeActual.getParent();
         if (
