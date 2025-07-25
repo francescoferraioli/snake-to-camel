@@ -75,15 +75,8 @@ function getImportedNames(scope: Node): Node[] {
   });
 }
 
-const cacheDirectDeclaredNameNodes = new Map<Node, Node[]>();
-
-function getDirectDeclaredNameNodes(scope: Node): Node[] {
-  if (cacheDirectDeclaredNameNodes.has(scope)) {
-    return cacheDirectDeclaredNameNodes.get(scope)!;
-  }
-  const nodes = _getDirectDeclaredNameNodes(scope);
-  cacheDirectDeclaredNameNodes.set(scope, nodes);
-  return nodes;
+function getDirectDeclaredVariableNames(scope: Node): string[] {
+  return getDirectDeclaredNameNodes(scope).map((node) => node.getText());
 }
 
 function isNamedNodeStatement(stmt: any): stmt is NamedNodeSpecificBase<Node> {
@@ -91,7 +84,7 @@ function isNamedNodeStatement(stmt: any): stmt is NamedNodeSpecificBase<Node> {
 }
 
 // Helper to get all direct declared name nodes in a scope
-function _getDirectDeclaredNameNodes(scope: Node): Node[] {
+function getDirectDeclaredNameNodes(scope: Node): Node[] {
   if (Node.isBlock(scope) || Node.isSourceFile(scope)) {
     // Collect all direct variable, function, class, interface, type, enum name nodes in this block
     const variableDeclarations = scope.getVariableDeclarations();
@@ -127,9 +120,8 @@ function _getDirectDeclaredNameNodes(scope: Node): Node[] {
 function wouldShadowInAncestors(node: Node, newName: string): boolean {
   let current = node.getParent();
   while (current) {
-    const nameNodes = getDirectDeclaredNameNodes(current);
-    if (nameNodes.some((n) => n && n.getText() === newName && n !== node))
-      return true;
+    const nameNodes = getDirectDeclaredVariableNames(current);
+    if (nameNodes.includes(newName)) return true;
     current = current.getParent();
   }
   return false;
@@ -143,8 +135,8 @@ function wouldShadowInDescendants(node: Node, newName: string): boolean {
     // For each direct child node that is a scope
     scope.forEachChild((child) => {
       // Check direct declared names in this scope
-      const nameNodes = getDirectDeclaredNameNodes(child);
-      if (nameNodes.some((n) => n && n.getText() === newName)) {
+      const nameNodes = getDirectDeclaredVariableNames(child);
+      if (nameNodes.includes(newName)) {
         shadowed = true;
       }
       // Recurse into this scope
