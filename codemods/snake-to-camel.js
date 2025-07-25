@@ -88,6 +88,26 @@ function wouldShadowInAncestors(node, newName) {
   return false;
 }
 
+// Check if a name would be shadowed in any descendant scope (only direct declarations in each scope)
+function wouldShadowInDescendants(node, newName) {
+  let shadowed = false;
+  // Helper to recursively check descendant scopes
+  function checkDescendantScopes(scope) {
+    // For each direct child node that is a scope
+    scope.forEachChild((child) => {
+      // Check direct declared names in this scope
+      const nameNodes = getDirectDeclaredNameNodes(child);
+      if (nameNodes.some(n => n && n.getText() === newName)) {
+        shadowed = true;
+      }
+      // Recurse into this scope
+      checkDescendantScopes(child);
+    });
+  }
+  checkDescendantScopes(node.getParentOrThrow());
+  return shadowed;
+}
+
 function isNormalVariableDeclaration(node) {
   return Node.isVariableDeclaration(node);
 }
@@ -138,6 +158,12 @@ project.getSourceFiles().forEach((sourceFile) => {
     if (wouldShadowInAncestors(node, camel)) {
       console.warn(`Skipping ${name} because it would shadow ${camel}`);
       return; // If shadowed, skip silently
+    }
+
+    // Check all descendant scopes for shadowing
+    if (wouldShadowInDescendants(node, camel)) {
+      console.warn(`Skipping ${name} because it would be shadowed by a descendant scope with ${camel}`);
+      return;
     }
 
     node.rename(camel); // This will update all references
