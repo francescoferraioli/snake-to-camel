@@ -47,16 +47,34 @@ files.forEach((filePath) => {
   project.addSourceFileAtPath(filePath);
 });
 
+function getImportedNames(scope) {
+  if (!Node.isSourceFile(scope)) return [];
+  return scope.getImportDeclarations().flatMap(imp => {
+    const nodes = [];
+    // Default import: import foo from '...';
+    const defaultImport = imp.getDefaultImport();
+    if (defaultImport) nodes.push(defaultImport.getNameNode());
+    // Namespace import: import * as foo from '...';
+    const namespaceImport = imp.getNamespaceImport();
+    if (namespaceImport) nodes.push(namespaceImport.getNameNode());
+    // Named imports: import { foo, bar as baz } from '...';
+    nodes.push(...imp.getNamedImports().map(spec => spec.getNameNode()));
+    return nodes;
+  })
+}
+
 // Helper to get all direct declared name nodes in a scope
 function getDirectDeclaredNameNodes(scope) {
   if (Node.isBlock(scope) || Node.isSourceFile(scope)) {
-    // Collect all direct variable, function, class, interface, type, enum name nodes in this scope
-    return scope.getVariableDeclarations().map(decl => decl.getNameNode()).concat(scope.getStatements()
-      .flatMap(stmt => {
-        // Collect names of functions, classes, interfaces, types, enums, etc. (e.g., function foo() {}, class Bar {})
-        if (stmt.getNameNode) return [stmt.getNameNode()];
-        return [];
-      }));
+    // Collect all direct variable, function, class, interface, type, enum name nodes in this block
+    return scope.getVariableDeclarations().map(decl => decl.getNameNode())
+      .concat(getImportedNames(scope))
+      .concat(scope.getStatements()
+        .flatMap(stmt => {
+          // Collect names of functions, classes, interfaces, types, enums, etc. (e.g., function foo() {}, class Bar {})
+          if (stmt.getNameNode) return [stmt.getNameNode()];
+          return [];
+        }));
   } else if (Node.isClassDeclaration(scope)) {
     // Collect all static property and static method name nodes in this class
     return [
