@@ -166,46 +166,10 @@ function isTypeOrInterfacePropertyReference(node: Node): boolean {
   while (current) {
     if (
       Node.isInterfaceDeclaration(current) ||
-      Node.isTypeAliasDeclaration(current)
+      Node.isTypeAliasDeclaration(current) ||
+      Node.isTypeLiteral(current)
     ) {
-      // Check if the node is a property signature or mapped type property
-      if (
-        node.getKind() === SyntaxKind.PropertySignature ||
-        node.getKind() === SyntaxKind.PropertyDeclaration ||
-        node.getKind() === SyntaxKind.PropertyAssignment
-      ) {
-        return true;
-      }
-    }
-    // Check if the node is used in any inline type position
-    if (
-      Node.isTypeReference(current) ||
-      Node.isTypeLiteral(current) ||
-      Node.isTupleTypeNode?.(current) ||
-      Node.isArrayTypeNode?.(current) ||
-      Node.isUnionTypeNode?.(current) ||
-      Node.isIntersectionTypeNode?.(current) ||
-      Node.isTypeOperatorTypeNode?.(current) ||
-      Node.isMappedTypeNode?.(current) ||
-      Node.isIndexedAccessTypeNode?.(current) ||
-      Node.isTypeQuery?.(current) ||
-      Node.isTypePredicate?.(current) ||
-      Node.isTypeParameterDeclaration?.(current)
-    ) {
-      // If the node is the identifier within the type node
-      if (current.getText().includes(node.getText())) {
-        return true;
-      }
-    }
-    // Check if the node is used as a return type
-    if (
-      Node.isFunctionDeclaration(current) ||
-      Node.isMethodDeclaration(current) ||
-      Node.isArrowFunction(current) ||
-      Node.isFunctionExpression(current)
-    ) {
-      const typeNode = current.getReturnTypeNode?.();
-      if (typeNode && typeNode.getText() === node.getText()) {
+      if (node.getParentOrThrow().getKind() === SyntaxKind.PropertySignature) {
         return true;
       }
     }
