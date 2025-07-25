@@ -194,10 +194,11 @@ project.getSourceFiles().forEach((sourceFile) => {
       return;
     }
 
-    // Only rename if this is a variable declaration (including destructuring)
+    // Only rename if this is a variable declaration (including destructuring) or a function parameter
     const isDeclaration =
       (isNormalVariableDeclaration(parent) ||
-        isDestructuringVariableDeclaration(parent)) &&
+        isDestructuringVariableDeclaration(parent) ||
+        Node.isParameterDeclaration(parent)) &&
       // Check that this is actually the declaration, not a reference
       parent.getNameNode() === node;
 
