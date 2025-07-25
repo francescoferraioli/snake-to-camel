@@ -17,16 +17,38 @@ type SkipReason =
   | 'shorthand destructuring';
 type Status = 'skip' | 'success';
 
+// CSV logging with prefix for easy filtering
+const CSV_PREFIX = 'SNAKE_TO_CAMEL_CSV:';
+let csvHeadersLogged = false;
+
+const csvHeaders: (keyof RenamingContextData)[] = [
+  'timestamp',
+  'filename',
+  'identifier',
+  'status',
+  'reason',
+  'shorthandHandled',
+];
+
+function logCsvHeaders(): void {
+  if (!csvHeadersLogged) {
+    console.log(`${CSV_PREFIX}${csvHeaders.join(',')}`);
+    csvHeadersLogged = true;
+  }
+}
+
+type RenamingContextData = {
+  timestamp: string;
+  filename: string;
+  identifier?: string;
+  status?: Status;
+  reason?: SkipReason;
+  shorthandHandled?: boolean;
+};
+
 // Structured logging context builder
 class RenamingContext {
-  private context: {
-    timestamp: string;
-    filename: string;
-    identifier?: string;
-    status?: Status;
-    reason?: SkipReason;
-    shorthandHandled?: boolean;
-  };
+  private context: RenamingContextData;
 
   constructor(filename: string) {
     this.context = {
@@ -53,7 +75,12 @@ class RenamingContext {
   }
 
   private log(): void {
-    console.log(JSON.stringify(this.context));
+    logCsvHeaders();
+    const csvLine = csvHeaders
+      .map((header) => `"${this.context[header] ?? ''}"`)
+      .join(',');
+
+    console.log(`${CSV_PREFIX}${csvLine}`);
   }
 }
 

@@ -1,0 +1,1 @@
+cat ignore/snake-to-camel.log | grep 'SNAKE_TO_CAMEL_CSV:' | sed 's/^SNAKE_TO_CAMEL_CSV://'
