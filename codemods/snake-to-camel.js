@@ -148,9 +148,9 @@ project.getSourceFiles().forEach((sourceFile) => {
       return;
     }
 
-    const name = node.getText();
+    const snake = node.getText();
 
-    if (!isSnakeCase(name)) {
+    if (!isSnakeCase(snake)) {
       return;
     }
 
@@ -166,27 +166,46 @@ project.getSourceFiles().forEach((sourceFile) => {
       return;
     }
 
-    const camel = toCamelCase(name);
-    if (camel === name) {
+    const camel = toCamelCase(snake);
+    if (camel === snake) {
       // This should never happen, but just in case
-      console.warn(`Skipping ${name} because it is already camelCase`);
+      console.warn(`Skipping ${snake} because it is already camelCase`);
       return;
     }
 
     // Check all ancestor scopes for shadowing
     if (wouldShadowInAncestors(node, camel)) {
-      console.warn(`Skipping ${name} because it would shadow ${camel}`);
+      console.warn(`Skipping ${snake} because it would shadow ${camel}`);
       return; // If shadowed, skip silently
     }
 
     // Check all descendant scopes for shadowing
     if (wouldShadowInDescendants(node, camel)) {
-      console.warn(`Skipping ${name} because it would be shadowed by a descendant scope with ${camel}`);
+      console.warn(`Skipping ${snake} because it would be shadowed by a descendant scope with ${camel}`);
       return;
     }
 
+    // Find all references before renaming
+    const references = node.findReferences();
+
     node.rename(camel); // This will update all references
     changed = true;
+
+    // After renaming, update all object literal shorthand property assignments to explicit property assignments
+    references.forEach(ref => {
+      ref.getReferences().forEach(refNode => {
+        const refNodeActual = refNode.getNode();
+        const parent = refNodeActual.getParent();
+        if (
+          parent &&
+          Node.isShorthandPropertyAssignment(parent) &&
+          parent.getNameNode() === refNodeActual
+        ) {
+          // Convert to explicit property assignment: { camelCase } -> { snake_case: camelCase }
+          parent.replaceWithText(`${snake}: ${camel}`);
+        }
+      });
+    });
   });
 
   if (changed) {
