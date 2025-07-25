@@ -5,16 +5,18 @@
   "license": "MIT",
   "scripts": {
     "snake-to-camel": "tsx src/snake-to-camel.ts",
-    "typecheck": "tsc --noEmit"
+    "typecheck": "tsc --noEmit",
+    "format": "prettier --write ."
   },
   "devDependencies": {
-    "typescript": "^5.0.0",
+    "@types/lodash": "^4.14.0",
     "@types/node": "^20.0.0",
-    "@types/lodash": "^4.14.0"
+    "prettier": "^3.6.2",
+    "typescript": "^5.0.0"
   },
   "dependencies": {
-    "ts-morph": "^22.0.0",
     "lodash": "^4.17.21",
+    "ts-morph": "^22.0.0",
     "tsx": "^4.7.0"
   }
 }
