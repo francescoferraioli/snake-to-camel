@@ -160,6 +160,60 @@ function isDestructuringVariableDeclaration(node: Node): boolean {
   return true;
 }
 
+// Helper to check if a node is a property in a type or interface
+function isTypeOrInterfacePropertyReference(node: Node): boolean {
+  let current: Node | undefined = node;
+  while (current) {
+    if (
+      Node.isInterfaceDeclaration(current) ||
+      Node.isTypeAliasDeclaration(current)
+    ) {
+      // Check if the node is a property signature or mapped type property
+      if (
+        node.getKind() === SyntaxKind.PropertySignature ||
+        node.getKind() === SyntaxKind.PropertyDeclaration ||
+        node.getKind() === SyntaxKind.PropertyAssignment
+      ) {
+        return true;
+      }
+    }
+    // Check if the node is used in any inline type position
+    if (
+      Node.isTypeReference(current) ||
+      Node.isTypeLiteral(current) ||
+      Node.isTupleTypeNode?.(current) ||
+      Node.isArrayTypeNode?.(current) ||
+      Node.isUnionTypeNode?.(current) ||
+      Node.isIntersectionTypeNode?.(current) ||
+      Node.isTypeOperatorTypeNode?.(current) ||
+      Node.isMappedTypeNode?.(current) ||
+      Node.isIndexedAccessTypeNode?.(current) ||
+      Node.isTypeQuery?.(current) ||
+      Node.isTypePredicate?.(current) ||
+      Node.isTypeParameterDeclaration?.(current)
+    ) {
+      // If the node is the identifier within the type node
+      if (current.getText().includes(node.getText())) {
+        return true;
+      }
+    }
+    // Check if the node is used as a return type
+    if (
+      Node.isFunctionDeclaration(current) ||
+      Node.isMethodDeclaration(current) ||
+      Node.isArrowFunction(current) ||
+      Node.isFunctionExpression(current)
+    ) {
+      const typeNode = current.getReturnTypeNode?.();
+      if (typeNode && typeNode.getText() === node.getText()) {
+        return true;
+      }
+    }
+    current = current.getParent();
+  }
+  return false;
+}
+
 project.getSourceFiles().forEach((sourceFile) => {
   let changed = false;
 
@@ -216,6 +270,23 @@ project.getSourceFiles().forEach((sourceFile) => {
     const identifier = node as Identifier;
     // Find all references before renaming
     const references = identifier.findReferences();
+
+    // Check if any reference is a property in a type or interface
+    let hasTypeOrInterfacePropertyRef = false;
+    references.forEach((ref) => {
+      ref.getReferences().forEach((refNode) => {
+        const refNodeActual = refNode.getNode();
+        if (isTypeOrInterfacePropertyReference(refNodeActual)) {
+          hasTypeOrInterfacePropertyRef = true;
+        }
+      });
+    });
+    if (hasTypeOrInterfacePropertyRef) {
+      console.log(
+        `Skipping ${snake} because it is a property in a type or interface`
+      );
+      return; // Skip renaming if any reference is a property in a type or interface
+    }
 
     identifier.rename(camel); // This will update all references
     changed = true;
