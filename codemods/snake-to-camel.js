@@ -63,8 +63,19 @@ function getImportedNames(scope) {
   })
 }
 
-// Helper to get all direct declared name nodes in a scope
+const cacheDirectDeclaredNameNodes = new Map();
+
 function getDirectDeclaredNameNodes(scope) {
+  if (cacheDirectDeclaredNameNodes.has(scope)) {
+    return cacheDirectDeclaredNameNodes.get(scope);
+  }
+  const nodes = _getDirectDeclaredNameNodes(scope);
+  cacheDirectDeclaredNameNodes.set(scope, nodes);
+  return nodes;
+}
+
+// Helper to get all direct declared name nodes in a scope
+function _getDirectDeclaredNameNodes(scope) {
   if (Node.isBlock(scope) || Node.isSourceFile(scope)) {
     // Collect all direct variable, function, class, interface, type, enum name nodes in this block
     return scope.getVariableDeclarations().map(decl => decl.getNameNode())
