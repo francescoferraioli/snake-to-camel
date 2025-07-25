@@ -56,7 +56,7 @@ function getImportedNames(scope) {
     if (defaultImport) nodes.push(defaultImport.getNameNode());
     // Namespace import: import * as foo from '...';
     const namespaceImport = imp.getNamespaceImport();
-    if (namespaceImport) nodes.push(namespaceImport.getNameNode());
+    if (namespaceImport) nodes.push(namespaceImport);
     // Named imports: import { foo, bar as baz } from '...';
     nodes.push(...imp.getNamedImports().map(spec => spec.getNameNode()));
     return nodes;
