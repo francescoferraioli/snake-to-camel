@@ -269,7 +269,7 @@ function isTypeOrInterfacePropertyReference(node: Node): boolean {
 
 project.getSourceFiles().forEach((sourceFile) => {
   let changed = false;
-  const context = new RenamingContext(sourceFile.getBaseName());
+  const context = new RenamingContext(sourceFile.getFilePath());
 
   sourceFile.forEachDescendant((node) => {
     if (node.getKind() !== SyntaxKind.Identifier) {
