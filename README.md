@@ -9,19 +9,13 @@ This project provides a codemod to convert snake_case identifiers to camelCase i
 
 ## Usage
 
-### Using the shell script
+To run the codemod, use:
 
-```sh
-./run-snake-to-camel.sh <folder> [tsconfig.json path]
 ```
-- `<folder>`: The directory containing your `.ts` and `.tsx` files.
-- `[tsconfig.json path]` (optional): Path to a `tsconfig.json` to use for parsing. If omitted, defaults to `tsconfig.json` in the current working directory.
-
-### Using the codemod directly
-
-```sh
-node codemods/snake-to-camel.js <folder> [tsconfig.json path]
+yarn snake-to-camel <folder> [tsconfig.json path]
 ```
+
+This will use the TypeScript version of the script via tsx.
 
 ## Example
 
