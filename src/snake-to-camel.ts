@@ -4,13 +4,13 @@ import {
   Node,
   NamedNodeSpecificBase,
   Identifier,
-} from "ts-morph";
-import { camelCase } from "lodash";
-import * as path from "path";
-import * as fs from "fs";
+} from 'ts-morph';
+import { camelCase } from 'lodash';
+import * as path from 'path';
+import * as fs from 'fs';
 
 function isSnakeCase(name: string): boolean {
-  if (!name.includes("_")) return false;
+  if (!name.includes('_')) return false;
   // Check for snake_case pattern: all lowercase with underscores
   return /^[a-z]+(_[a-z0-9]+)*$/.test(name);
 }
@@ -21,9 +21,9 @@ function toCamelCase(name: string): string {
 
 const targetPath: string = process.argv[2];
 const tsconfigPath: string =
-  process.argv[3] || path.join(process.cwd(), "tsconfig.json");
+  process.argv[3] || path.join(process.cwd(), 'tsconfig.json');
 if (!targetPath) {
-  console.error("Usage: node snake-to-camel.js <folder> [tsconfig.json path]");
+  console.error('Usage: node snake-to-camel.js <folder> [tsconfig.json path]');
   process.exit(1);
 }
 
@@ -35,7 +35,7 @@ const project: Project = new Project({
 function getAllFiles(
   dir: string,
   exts: string[],
-  fileList: string[] = [],
+  fileList: string[] = []
 ): string[] {
   const files = fs.readdirSync(dir);
   files.forEach((file) => {
@@ -50,9 +50,9 @@ function getAllFiles(
 }
 
 const files: string[] =
-  targetPath.endsWith(".ts") || targetPath.endsWith(".tsx")
+  targetPath.endsWith('.ts') || targetPath.endsWith('.tsx')
     ? [targetPath]
-    : getAllFiles(targetPath, [".ts", ".tsx"]);
+    : getAllFiles(targetPath, ['.ts', '.tsx']);
 
 // Add all files to the project first
 files.forEach((filePath) => {
@@ -128,10 +128,10 @@ function wouldShadowInAncestors(node: Node, newName: string): boolean {
   let current = node.getParent();
   while (current) {
     const nameNodes = getDirectDeclaredNameNodes(current);
-    if (newName === "bugReport") {
+    if (newName === 'bugReport') {
       console.log(
         current.getKindName(),
-        nameNodes.map((n) => n.getText()),
+        nameNodes.map((n) => n.getText())
       );
     }
     if (nameNodes.some((n) => n && n.getText() === newName && n !== node))
@@ -221,7 +221,7 @@ project.getSourceFiles().forEach((sourceFile) => {
     // Check all descendant scopes for shadowing
     if (wouldShadowInDescendants(node, camel)) {
       console.warn(
-        `Skipping ${snake} because it would be shadowed by a descendant scope with ${camel}`,
+        `Skipping ${snake} because it would be shadowed by a descendant scope with ${camel}`
       );
       return;
     }
