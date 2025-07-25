@@ -128,12 +128,6 @@ function wouldShadowInAncestors(node: Node, newName: string): boolean {
   let current = node.getParent();
   while (current) {
     const nameNodes = getDirectDeclaredNameNodes(current);
-    if (newName === 'bugReport') {
-      console.log(
-        current.getKindName(),
-        nameNodes.map((n) => n.getText())
-      );
-    }
     if (nameNodes.some((n) => n && n.getText() === newName && n !== node))
       return true;
     current = current.getParent();
