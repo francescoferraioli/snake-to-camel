@@ -160,6 +160,24 @@ function isDestructuringVariableDeclaration(node: Node): boolean {
   return true;
 }
 
+// Helper to check if a node is in a type reference position
+function isTypeReferencePosition(node: Node): boolean {
+  // Check if the node or any of its ancestors is a type reference or type declaration
+  let current: Node | undefined = node;
+  while (current) {
+    if (
+      Node.isTypeReference(current) ||
+      Node.isInterfaceDeclaration(current) ||
+      Node.isTypeAliasDeclaration(current) ||
+      Node.isEnumDeclaration(current)
+    ) {
+      return true;
+    }
+    current = current.getParent();
+  }
+  return false;
+}
+
 project.getSourceFiles().forEach((sourceFile) => {
   let changed = false;
 
@@ -217,13 +235,14 @@ project.getSourceFiles().forEach((sourceFile) => {
     // Find all references before renaming
     const references = identifier.findReferences();
 
-    identifier.rename(camel); // This will update all references
-    changed = true;
-
-    // After renaming, update all object literal shorthand property assignments to explicit property assignments
+    // Rename only non-type references
     references.forEach((ref) => {
       ref.getReferences().forEach((refNode) => {
         const refNodeActual = refNode.getNode();
+        if (isTypeReferencePosition(refNodeActual)) {
+          return; // Skip type references
+        }
+        changed = true;
         const parent = refNodeActual.getParent();
         if (
           parent &&
@@ -232,6 +251,9 @@ project.getSourceFiles().forEach((sourceFile) => {
         ) {
           // Convert to explicit property assignment: { camelCase } -> { snake_case: camelCase }
           parent.replaceWithText(`${snake}: ${camel}`);
+        } else {
+          // Rename the identifier text directly
+          refNodeActual.replaceWithText(camel);
         }
       });
     });
