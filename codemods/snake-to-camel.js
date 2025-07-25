@@ -51,14 +51,12 @@ files.forEach((filePath) => {
 function getDirectDeclaredNameNodes(scope) {
   if (Node.isBlock(scope) || Node.isSourceFile(scope)) {
     // Collect all direct variable, function, class, interface, type, enum name nodes in this scope
-    return scope.getStatements()
+    return scope.getVariableDeclarations().map(decl => decl.getNameNode()).concat(scope.getStatements()
       .flatMap(stmt => {
-        // Collect variable declaration names (e.g., let foo = 1;)
-        if (stmt.getVariableDeclarations) return stmt.getVariableDeclarations().map(decl => decl.getNameNode());
         // Collect names of functions, classes, interfaces, types, enums, etc. (e.g., function foo() {}, class Bar {})
         if (stmt.getNameNode) return [stmt.getNameNode()];
         return [];
-      });
+      }));
   } else if (Node.isClassDeclaration(scope)) {
     // Collect all static property and static method name nodes in this class
     return [
@@ -82,6 +80,9 @@ function wouldShadowInAncestors(node, newName) {
   let current = node.getParent();
   while (current) {
     const nameNodes = getDirectDeclaredNameNodes(current);
+    if (newName === 'bugReport') {
+      console.log(current.getKindName(), nameNodes.map(n => n.getText()));
+    }
     if (nameNodes.some(n => n && n.getText() === newName && n !== node)) return true;
     current = current.getParent();
   }
