@@ -50,16 +50,12 @@ type RenamingContextData = {
 class RenamingContext {
   private context: RenamingContextData;
 
-  constructor(filename: string) {
+  constructor(filename: string, identifier: string) {
     this.context = {
       timestamp: new Date().toISOString(),
       filename,
+      identifier,
     };
-  }
-
-  setIdentifier(identifier: string): RenamingContext {
-    this.context.identifier = identifier;
-    return this;
   }
 
   skip(reason: SkipReason): void {
@@ -311,8 +307,6 @@ function isTypeOrInterfacePropertyReference(node: Node): boolean {
 project.getSourceFiles().forEach((sourceFile) => {
   let changed = false;
   sourceFile.forEachDescendant((node) => {
-    const context = new RenamingContext(sourceFile.getFilePath());
-
     if (node.getKind() !== SyntaxKind.Identifier) {
       return;
     }
@@ -323,7 +317,7 @@ project.getSourceFiles().forEach((sourceFile) => {
       return;
     }
 
-    context.setIdentifier(snake);
+    const context = new RenamingContext(sourceFile.getFilePath(), snake);
 
     const parent = node.getParentOrThrow();
 
