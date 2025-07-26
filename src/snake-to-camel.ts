@@ -4,7 +4,6 @@ import {
   Node,
   NamedNodeSpecificBase,
   Identifier,
-  VariableDeclaration,
 } from 'ts-morph';
 import { camelCase } from 'lodash';
 import * as path from 'path';
@@ -226,23 +225,36 @@ function wouldShadowInAncestors(node: Node, newName: string): boolean {
   return false;
 }
 
+function getParentScope(node: Node): Node {
+  let current = node.getParent();
+  while (current) {
+    if (isScope(current)) return current;
+    current = current.getParent();
+  }
+  throw new Error('No scope found');
+}
+
+function isScope(node: Node): boolean {
+  return Node.isBlock(node) || Node.isSourceFile(node);
+}
+
 // Check if a name would be shadowed in any descendant scope (only direct declarations in each scope)
 function wouldShadowInDescendants(node: Node, newName: string): boolean {
   let shadowed = false;
   // Helper to recursively check descendant scopes
   function checkDescendantScopes(scope: Node) {
+    // Check direct declared names in this scope
+    const nameNodes = getDirectDeclaredVariableNames(scope);
+    if (nameNodes.includes(newName)) {
+      shadowed = true;
+    }
     // For each direct child node that is a scope
     scope.forEachChild((child) => {
-      // Check direct declared names in this scope
-      const nameNodes = getDirectDeclaredVariableNames(child);
-      if (nameNodes.includes(newName)) {
-        shadowed = true;
-      }
       // Recurse into this scope
       checkDescendantScopes(child);
     });
   }
-  checkDescendantScopes(node.getParentOrThrow());
+  checkDescendantScopes(getParentScope(node));
   return shadowed;
 }
 
