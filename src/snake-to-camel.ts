@@ -304,8 +304,10 @@ function isTypeOrInterfacePropertyReference(node: Node): boolean {
   return false;
 }
 
+// Track all files that need to be saved
+const filesToSave = new Set<string>();
+
 project.getSourceFiles().forEach((sourceFile) => {
-  let changed = false;
   sourceFile.forEachDescendant((node) => {
     if (node.getKind() !== SyntaxKind.Identifier) {
       return;
@@ -384,8 +386,19 @@ project.getSourceFiles().forEach((sourceFile) => {
       return; // Skip renaming if any reference is a property in a type or interface
     }
 
+    filesToSave.add(sourceFile.getFilePath());
+
+    // Track all files that have references to this identifier
+    references.forEach((ref) => {
+      ref.getReferences().forEach((refNode) => {
+        const sourceFile = refNode.getSourceFile();
+        if (sourceFile) {
+          filesToSave.add(sourceFile.getFilePath());
+        }
+      });
+    });
+
     identifier.rename(camel); // This will update all references
-    changed = true;
 
     // After renaming, update all object literal shorthand property assignments to explicit property assignments
     let shorthandHandled = false;
@@ -407,9 +420,13 @@ project.getSourceFiles().forEach((sourceFile) => {
 
     context.success(shorthandHandled);
   });
+});
 
-  if (changed) {
+// Save all files that were modified
+filesToSave.forEach((filePath) => {
+  const sourceFile = project.getSourceFile(filePath);
+  if (sourceFile) {
     sourceFile.saveSync();
-    console.log(`Updated: ${sourceFile.getFilePath()}`);
+    console.log(`Updated: ${filePath}`);
   }
 });
