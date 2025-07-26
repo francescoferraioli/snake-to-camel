@@ -199,7 +199,7 @@ function getDirectDeclaredNameNodes(scope: Node): Node[] {
 
 // Helper function to extract name nodes from a variable declaration (handles both normal and destructuring)
 function getVariableDeclarationNameNodes(
-  decl: Node & Pick<VariableDeclaration, 'getNameNode'>
+  decl: NamedNodeSpecificBase<Node>
 ): Node[] {
   const nameNode = decl.getNameNode();
 
@@ -208,7 +208,7 @@ function getVariableDeclarationNameNodes(
     return nameNode
       .getElements()
       .filter((element) => Node.isBindingElement(element))
-      .map((element) => element.getNameNode());
+      .flatMap((element) => getVariableDeclarationNameNodes(element));
   }
 
   // If it's a normal variable declaration, return the name node
