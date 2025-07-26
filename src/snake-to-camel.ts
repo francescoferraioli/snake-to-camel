@@ -4,6 +4,7 @@ import {
   Node,
   NamedNodeSpecificBase,
   Identifier,
+  VariableDeclaration,
 } from 'ts-morph';
 import { camelCase } from 'lodash';
 import * as path from 'path';
@@ -165,8 +166,11 @@ function getDirectDeclaredNameNodes(scope: Node): Node[] {
     const variableDeclarations = scope.getVariableDeclarations();
     const importedNames = getImportedNames(scope);
     const statements = scope.getStatements();
+
     return [
-      ...variableDeclarations.map((decl) => decl.getNameNode()),
+      ...variableDeclarations.flatMap((decl) =>
+        getVariableDeclarationNameNodes(decl)
+      ),
       ...importedNames,
       ...statements.flatMap((stmt) => {
         // Collect names of functions, classes, interfaces, types, enums, etc. (e.g., function foo() {}, class Bar {})
@@ -186,9 +190,29 @@ function getDirectDeclaredNameNodes(scope: Node): Node[] {
     Node.isArrowFunction(scope)
   ) {
     // Parameters of the function
-    return scope.getParameters().map((param) => param.getNameNode());
+    return scope
+      .getParameters()
+      .flatMap((param) => getVariableDeclarationNameNodes(param));
   }
   return [];
+}
+
+// Helper function to extract name nodes from a variable declaration (handles both normal and destructuring)
+function getVariableDeclarationNameNodes(
+  decl: Node & Pick<VariableDeclaration, 'getNameNode'>
+): Node[] {
+  const nameNode = decl.getNameNode();
+
+  // If it's destructuring, extract all binding elements
+  if (Node.isObjectBindingPattern(nameNode)) {
+    return nameNode
+      .getElements()
+      .filter((element) => Node.isBindingElement(element))
+      .map((element) => element.getNameNode());
+  }
+
+  // If it's a normal variable declaration, return the name node
+  return [nameNode];
 }
 
 // Check if a name would be shadowed in any ancestor scope (only direct declarations in each scope)
