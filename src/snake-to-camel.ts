@@ -178,10 +178,15 @@ function getDirectDeclaredNameNodes(scope: Node): Node[] {
       }),
     ];
   } else if (Node.isClassDeclaration(scope)) {
-    // Collect all static property and static method name nodes in this class
+    // Collect all static and instance property/method name nodes in this class
     return [
       ...scope.getStaticProperties().map((prop) => prop.getNameNode()),
       ...scope.getStaticMethods().map((method) => method.getNameNode()),
+      // Getting the instance properties and methods shouldn't be needed because they need to be accessed using the this keyword
+      // However, for constructor parameter property shorthand, these are needed in that case
+      // We could check if the reason we are getting these is because of constructor parameter property shorthand, but that's unnecessary for now
+      ...scope.getInstanceProperties().map((prop) => prop.getNameNode()),
+      ...scope.getInstanceMethods().map((method) => method.getNameNode()),
     ];
   } else if (
     Node.isFunctionDeclaration(scope) ||
