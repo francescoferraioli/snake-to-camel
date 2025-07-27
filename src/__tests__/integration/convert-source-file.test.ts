@@ -34,6 +34,8 @@ describe('convertSourceFile Integration', () => {
       .map((file) => `from/${file}`);
   };
 
+  const notSaving = ['/interfaces.ts'];
+
   it('should convert snake_case identifiers to camelCase correctly across all scenarios', () => {
     // Get all test files from the 'from' directory
     const testFiles = getTestFiles();
@@ -58,10 +60,14 @@ describe('convertSourceFile Integration', () => {
       const convertedContent = sourceFile.getFullText();
       const expectedContent = expectedContents[index];
 
-      expect(convertedContent).toBe(expectedContent);
+      const context = `File: ${sourceFile.getFilePath()}`;
+
+      expect(convertedContent, context).toBe(expectedContent);
 
       // Verify that files were marked for saving
-      expect(filesToSave.has(sourceFile.getFilePath())).toBe(true);
+      expect(filesToSave.has(sourceFile.getFilePath()), context).toBe(
+        !notSaving.includes(sourceFile.getFilePath())
+      );
     });
   });
 });
