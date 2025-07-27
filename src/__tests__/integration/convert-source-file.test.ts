@@ -1,7 +1,7 @@
 import { describe, it, expect, beforeEach } from 'vitest';
 import { Project } from 'ts-morph';
 import { convertSourceFile } from '../../convert-source-file';
-import { readFileSync } from 'fs';
+import { readFileSync, readdirSync } from 'fs';
 import { join } from 'path';
 
 describe('convertSourceFile Integration', () => {
@@ -27,30 +27,41 @@ describe('convertSourceFile Integration', () => {
     return project.createSourceFile(fileName, content);
   };
 
+  const getTestFiles = (): string[] => {
+    const fromDir = join(__dirname, 'from');
+    return readdirSync(fromDir)
+      .filter((file) => file.endsWith('.ts'))
+      .map((file) => `from/${file}`);
+  };
+
   it('should convert snake_case identifiers to camelCase correctly across all scenarios', () => {
-    // Load the "from" files
-    const userSourceFile = createSourceFileFromPath('from/user.ts');
-    const utilsSourceFile = createSourceFileFromPath('from/utils.ts');
+    // Get all test files from the 'from' directory
+    const testFiles = getTestFiles();
+
+    // Load the "from" files and create source files
+    const sourceFiles = testFiles.map((filePath) =>
+      createSourceFileFromPath(filePath)
+    );
 
     // Load the expected "to" files
-    const expectedUserContent = loadTestFile('to/user.ts');
-    const expectedUtilsContent = loadTestFile('to/utils.ts');
+    const expectedContents = testFiles.map((filePath) => {
+      const toPath = filePath.replace('from/', 'to/');
+      return loadTestFile(toPath);
+    });
 
-    // Apply the conversion function
+    // Apply the conversion function to all source files
     const converter = convertSourceFile({ shouldExcludeFile, filesToSave });
-    converter(userSourceFile);
-    converter(utilsSourceFile);
+    sourceFiles.forEach((sourceFile) => converter(sourceFile));
 
-    // Get the converted content
-    const convertedUserContent = userSourceFile.getFullText();
-    const convertedUtilsContent = utilsSourceFile.getFullText();
+    // Get the converted content and assert it matches expected content
+    sourceFiles.forEach((sourceFile, index) => {
+      const convertedContent = sourceFile.getFullText();
+      const expectedContent = expectedContents[index];
 
-    // Assert the converted content matches the expected content
-    expect(convertedUserContent).toBe(expectedUserContent);
-    expect(convertedUtilsContent).toBe(expectedUtilsContent);
+      expect(convertedContent).toBe(expectedContent);
 
-    // Verify that files were marked for saving
-    expect(filesToSave.has(userSourceFile.getFilePath())).toBe(true);
-    expect(filesToSave.has(utilsSourceFile.getFilePath())).toBe(true);
+      // Verify that files were marked for saving
+      expect(filesToSave.has(sourceFile.getFilePath())).toBe(true);
+    });
   });
 });
