@@ -35,7 +35,7 @@ describe('convertSourceFile Integration', () => {
       .map((file) => `from/${file}`);
   };
 
-  const notSaving = ['/interfaces.ts', '/excluded.ts'];
+  const notSaving = ['/interfaces.ts', '/excluded.ts', '/camel-consts.ts'];
 
   it('should convert snake_case identifiers to camelCase correctly across all scenarios', () => {
     // Get all test files from the 'from' directory
