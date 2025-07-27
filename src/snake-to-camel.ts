@@ -147,8 +147,13 @@ function getImportedNames(scope: Node): Node[] {
   });
 }
 
-function getDirectDeclaredVariableNames(scope: Node): string[] {
-  return getDirectDeclaredNameNodes(scope).map((node) => node.getText());
+function getDirectDeclaredVariableNames(
+  scope: Node,
+  originalNode: Node
+): string[] {
+  return getDirectDeclaredNameNodes(scope, originalNode).map((node) =>
+    node.getText()
+  );
 }
 
 function isNamedNodeStatement(stmt: any): stmt is NamedNodeSpecificBase<Node> {
@@ -156,7 +161,7 @@ function isNamedNodeStatement(stmt: any): stmt is NamedNodeSpecificBase<Node> {
 }
 
 // Helper to get all direct declared name nodes in a scope
-function getDirectDeclaredNameNodes(scope: Node): Node[] {
+function getDirectDeclaredNameNodes(scope: Node, originalNode: Node): Node[] {
   if (Node.isBlock(scope) || Node.isSourceFile(scope)) {
     // Collect all direct variable, function, class, interface, type, enum name nodes in this block
     const variableDeclarations = scope.getVariableDeclarations();
@@ -179,11 +184,13 @@ function getDirectDeclaredNameNodes(scope: Node): Node[] {
     return [
       ...scope.getStaticProperties().map((prop) => prop.getNameNode()),
       ...scope.getStaticMethods().map((method) => method.getNameNode()),
-      // Getting the instance properties and methods shouldn't be needed because they need to be accessed using the this keyword
-      // However, for constructor parameter property shorthand, these are needed in that case
-      // We could check if the reason we are getting these is because of constructor parameter property shorthand, but that's unnecessary for now
-      ...scope.getInstanceProperties().map((prop) => prop.getNameNode()),
-      ...scope.getInstanceMethods().map((method) => method.getNameNode()),
+      // For constructor parameter property shorthand, we need to get the instance properties and methods
+      ...(isConstructorParameterProperty(originalNode)
+        ? [
+            ...scope.getInstanceProperties().map((prop) => prop.getNameNode()),
+            ...scope.getInstanceMethods().map((method) => method.getNameNode()),
+          ]
+        : []),
     ];
   } else if (
     Node.isFunctionDeclaration(scope) ||
@@ -220,24 +227,39 @@ function getVariableDeclarationNameNodes(
 function wouldShadowInAncestors(node: Node, newName: string): boolean {
   let current = node.getParent();
   while (current) {
-    const nameNodes = getDirectDeclaredVariableNames(current);
+    const nameNodes = getDirectDeclaredVariableNames(current, node);
     if (nameNodes.includes(newName)) return true;
     current = current.getParent();
   }
   return false;
 }
 
-function getParentScope(node: Node): Node {
+function getParentOfType<T extends Node>(
+  node: Node,
+  typePredicate: (node: Node) => node is T
+): T | undefined {
+  if (typePredicate(node)) return node;
   let current = node.getParent();
   while (current) {
-    if (isScope(current)) return current;
+    if (typePredicate(current)) return current;
     current = current.getParent();
   }
-  throw new Error('No scope found');
+  return undefined;
 }
 
-function isScope(node: Node): boolean {
-  return Node.isBlock(node) || Node.isSourceFile(node);
+function getParentScope(node: Node): Node {
+  const parent = getParentOfType(node, isScope);
+  if (!parent) throw new Error('No scope found');
+  return parent;
+}
+
+function isScope(node: Node): node is Node {
+  return (
+    Node.isBlock(node) ||
+    Node.isSourceFile(node) ||
+    Node.isClassDeclaration(node) ||
+    Node.isFunctionDeclaration(node)
+  );
 }
 
 // Check if a name would be shadowed in any descendant scope (only direct declarations in each scope)
@@ -246,7 +268,7 @@ function wouldShadowInDescendants(node: Node, newName: string): boolean {
   // Helper to recursively check descendant scopes
   function checkDescendantScopes(scope: Node) {
     // Check direct declared names in this scope
-    const nameNodes = getDirectDeclaredVariableNames(scope);
+    const nameNodes = getDirectDeclaredVariableNames(scope, node);
     if (nameNodes.includes(newName)) {
       shadowed = true;
     }
@@ -303,6 +325,14 @@ function isTypeOrInterfacePropertyReference(node: Node): boolean {
     current = current.getParent();
   }
   return false;
+}
+
+function isConstructorParameterProperty(node: Node): boolean {
+  const param = getParentOfType(node, Node.isParameterDeclaration);
+  if (!param) return false;
+  const constructor = getParentOfType(param, Node.isConstructorDeclaration);
+  if (!constructor) return false;
+  return param.hasScopeKeyword() || param.isReadonly();
 }
 
 // Track all files that need to be saved
