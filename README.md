@@ -1,32 +1,21 @@
 # snake-to-camel-ts
 
-This project provides a codemod to convert snake_case identifiers to camelCase in TypeScript and TSX files using ts-morph.
+A TypeScript utility for converting snake_case to camelCase in TypeScript files.
 
-## Requirements
+## Installation
 
-- Node.js
-- [ts-morph](https://ts-morph.com/) (installed as a dependency)
-- [lodash](https://lodash.com/) (installed as a dependency)
+```bash
+yarn install
+```
 
 ## Usage
 
-To run the codemod, use:
-
-```
-yarn snake-to-camel <folder> [tsconfig.json path]
+```bash
+yarn snake-to-camel
 ```
 
-This will use the TypeScript version of the script via tsx.
+## Development
 
-## Example
+### Testing
 
-```sh
-./run-snake-to-camel.sh ./src ../myproject/tsconfig.json
-```
-
-This will process all `.ts` and `.tsx` files in `./src` using the TypeScript configuration at `../myproject/tsconfig.json`.
-
-## Notes
-
-- This codemod uses [lodash.camelCase](https://lodash.com/docs/4.17.15#camelCase) for conversion.
-- Review changes before committing, as automated renaming may have side effects in some codebases.
+This project uses [Vitest](https://vitest.dev/) for testing. Tests are located in the `src/__tests__/` directory and follow the naming convention `*.test.ts`.
