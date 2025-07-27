@@ -7,14 +7,21 @@ interface UserData {
 class UserService {
   private user_data: UserData[] = [];
 
-  constructor(private api_client: any) {}
+  constructor(
+    // Will convert because it doesn't shadow
+    private api_client: any,
+    // Will not convert because it shadows an instance method
+    private create_user: boolean,
+    // Will convert because even though it shadows, it's not an instance field
+    get_user_count: boolean
+  ) {}
 
-  async get_user_by_id(user_id: string): Promise<UserData | null> {
+  async getUserById(user_id: string): Promise<UserData | null> {
     const user_data = this.user_data.find((user) => user.user_name === user_id);
     return user_data || null;
   }
 
-  async create_user(user_data: UserData): Promise<void> {
+  async createUser(user_data: UserData): Promise<void> {
     const new_user = {
       ...user_data,
       created_at: new Date(),
@@ -22,7 +29,7 @@ class UserService {
     this.user_data.push(new_user);
   }
 
-  get_user_count(): number {
+  getUserCount(): number {
     return this.user_data.length;
   }
 }
