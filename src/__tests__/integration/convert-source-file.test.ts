@@ -1,5 +1,5 @@
 import { describe, it, expect, beforeEach } from 'vitest';
-import { Project } from 'ts-morph';
+import { Project, SourceFile } from 'ts-morph';
 import { convertSourceFile } from '../../convert-source-file';
 import { readFileSync, readdirSync } from 'fs';
 import { join } from 'path';
@@ -15,7 +15,8 @@ describe('convertSourceFile Integration', () => {
     filesToSave.clear();
   });
 
-  const shouldExcludeFile = () => false; // Don't exclude any files for this test
+  const shouldExcludeFile = (sourceFile: SourceFile) =>
+    sourceFile.getFilePath().includes('excluded');
 
   const loadTestFile = (filePath: string): string => {
     return readFileSync(join(__dirname, filePath), 'utf-8');
@@ -34,7 +35,7 @@ describe('convertSourceFile Integration', () => {
       .map((file) => `from/${file}`);
   };
 
-  const notSaving = ['/interfaces.ts'];
+  const notSaving = ['/interfaces.ts', '/excluded.ts'];
 
   it('should convert snake_case identifiers to camelCase correctly across all scenarios', () => {
     // Get all test files from the 'from' directory
