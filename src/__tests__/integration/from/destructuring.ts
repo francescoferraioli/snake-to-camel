@@ -23,4 +23,13 @@ class DataProcessor {
   }
 }
 
+function buildUser(first_name: string, last_name: string): {
+  first_name: string;
+  last_name: string;
+} {
+  return { first_name, last_name };
+}
+
+const { first_name, last_name } = buildUser('John', 'Doe');
+
 export { destructured_user, destructured_email, display_name, contact_email, DataProcessor };
