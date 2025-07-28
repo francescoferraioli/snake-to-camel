@@ -20,4 +20,30 @@ function processData2(userName: string) {
   return { user_name: userName, email_address: emailAddress };
 }
 
+function test1() {
+  const first_name = 'test';
+  const last_name = 'test';
+  return `${first_name} ${last_name}`;
+}
+
+function test2() {
+  const first_name = 'test';
+  const last_name = 'test';
+  return `${first_name} ${last_name}`;
+}
+
+class Test {
+  test3() {
+    const first_name = 'test';
+    const last_name = 'test';
+    return `${first_name} ${last_name}`;
+  }
+
+  test4() {
+    const first_name = 'test';
+    const last_name = 'test';
+    return `${first_name} ${last_name}`;
+  }
+}
+
 export { processData };
